@@ -33,6 +33,8 @@ include_directories(
   SYSTEM ${FILESYSTEM_INCLUDE_DIR}
   # STB Image Write
   SYSTEM ${STB_IMAGE_WRITE_INCLUDE_DIR}
+  # Spherical Harmonics
+  SYSTEM ${SH_INCLUDE_DIRS}
 )
 
 # The following lines build the main executable. If you add a source
@@ -81,6 +83,7 @@ add_executable(nori
   src/parser.cpp
   src/perspective.cpp
   src/proplist.cpp
+  src/prt.cpp
   src/rfilter.cpp
   src/scene.cpp
   src/ttest.cpp
@@ -88,6 +91,8 @@ add_executable(nori
   src/microfacet.cpp
   src/mirror.cpp
   src/dielectric.cpp
+  ext/spherical-harmonics/sh/spherical_harmonics.cc
+  ext/spherical-harmonics/sh/default_image.cc
 )
 
 add_definitions(${NANOGUI_EXTRA_DEFS})

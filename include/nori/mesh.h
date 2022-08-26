@@ -33,6 +33,10 @@ struct Intersection {
     Frame geoFrame;
     /// Pointer to the associated mesh
     const Mesh *mesh;
+    /// Barycentric coordinates
+    Vector3f bary;
+    /// Triangle indices
+    Point3f tri_index;
 
     /// Create an uninitialized intersection record
     Intersection() : mesh(nullptr) { }

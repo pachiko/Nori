@@ -28,3 +28,6 @@
 [submodule "ext/eigen"]
 	path = ext/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "ext/spherical-harmonics"]
+	path = ext/spherical-harmonics
+	url = https://github.com/pachiko/spherical-harmonics

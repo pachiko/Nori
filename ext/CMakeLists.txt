@@ -187,6 +187,8 @@ set(FILESYSTEM_INCLUDE_DIR
   ${CMAKE_CURRENT_SOURCE_DIR}/filesystem)
 set(PUGIXML_INCLUDE_DIR
   ${CMAKE_CURRENT_SOURCE_DIR}/pugixml/src)
+set(SH_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}/spherical-harmonics)
 
 # Compile remainder of the codebase with compiler warnings turned on
 if(MSVC)
@@ -219,6 +221,7 @@ set(CompilerFlags
 	    NANOGUI_EXTRA_LIBS NANOGUI_INCLUDE_DIR EIGEN_INCLUDE_DIR
       STB_IMAGE_WRITE_INCLUDE_DIR TBB_INCLUDE_DIR
       FILESYSTEM_INCLUDE_DIR PUGIXML_INCLUDE_DIR
+      SH_INCLUDE_DIRS
 )
 foreach(CompilerFlag ${CompilerFlags})
   set(${CompilerFlag} "${${CompilerFlag}}" PARENT_SCOPE)

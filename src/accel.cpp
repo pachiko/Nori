@@ -6,6 +6,9 @@
 
 #include <nori/accel.h>
 #include <Eigen/Geometry>
+#include <numeric>
+#include <array>
+#include <chrono>
 
 NORI_NAMESPACE_BEGIN
 
@@ -17,7 +20,115 @@ void Accel::addMesh(Mesh *mesh) {
 }
 
 void Accel::build() {
-    /* Nothing to do here for now */
+    if (m_mesh == nullptr) return;
+    uint32_t count = m_mesh->getTriangleCount();
+    std::vector<uint32_t> tris(count);
+    std::iota(tris.begin(), tris.end(), 0);
+    depth = numInterior = numLeaf = numTris = 0;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    m_root = recursiveBuild(m_bbox, tris);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "OctTree build time: " << duration.count() << " (ms) \n";
+    std::cout << "OctTree number of interior nodes: " << numInterior << "\n";
+    std::cout << "OctTree number of leaf nodes: " << numLeaf << "\n";
+    std::cout << "OctTree average number of triangles per leaf node: " << numTris/numLeaf << "\n";
+}
+
+std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, std::vector<uint32_t>& tris) {
+    if (tris.empty()) return nullptr;
+    depth++;
+    auto res = std::make_unique<OctTreeNode>(bbox);
+
+    if (tris.size() <= NORI_NODE_MAX_TRI_COUNT || depth >= NORI_NODE_MAX_TREE_DEPTH) {
+        res->triIndices = std::move(tris);
+        depth--;
+        numLeaf++;
+        numTris += res->triIndices.size();
+        return res;
+    }
+
+    std::vector<uint32_t> tri_list[8];
+    std::vector<BoundingBox3f> childBoxes;
+    Point3f center = bbox.getCenter();
+
+    for (int i = 0; i < 8; i++) {
+        Point3f corner = bbox.getCorner(i);
+
+        Point3f min(std::min(corner[0], center[0]),
+                    std::min(corner[1], center[1]),
+                    std::min(corner[2], center[2]));
+
+        Point3f max(std::max(corner[0], center[0]),
+            std::max(corner[1], center[1]),
+            std::max(corner[2], center[2]));
+
+        childBoxes.push_back(BoundingBox3f(min, max));
+    }
+
+    for (auto tri : tris) {
+        const BoundingBox3f& triB = m_mesh->getBoundingBox(tri);
+        for (int i = 0; i < 8; ++i) {
+            const BoundingBox3f& childB = childBoxes[i];
+            if (triB.overlaps(childB)) tri_list[i].push_back(tri);
+        }
+    } 
+
+    res->children.resize(8);
+    for (int i = 0; i < 8; ++i) res->children[i] = recursiveBuild(childBoxes[i], tri_list[i]);
+    depth--;
+    numInterior++;
+    return res;
+}
+
+
+void OctTreeNode::rayIntersect(const Mesh& mesh, Ray3f& ray, Intersection& its, bool& hit, uint32_t& triIdx, bool shadowRay) {
+    bool hitBound;
+    float nearT;
+    float farT;
+
+    hitBound = bound.rayIntersect(ray, nearT, farT);
+    if (!hitBound || nearT > ray.maxt) return;
+
+    if (!children.empty()) {
+        std::array<float, 8> times;
+        for (int i = 0; i < 8; i++) {
+            if (children[i]) {
+                hitBound = children[i]->bound.rayIntersect(ray, nearT, farT);
+                if (hitBound && ray.maxt > nearT) {
+                    times[i] = nearT;
+                    continue;
+                }
+            }
+            times[i] = std::numeric_limits<float>::infinity();
+        }
+
+        std::array<int, 8> idx;
+        std::iota(idx.begin(), idx.end(), 0);
+        std::sort(idx.begin(), idx.end(), [&times](int i1, int i2) { return times[i1] < times[i2]; });
+
+        for (auto i : idx) {
+            if (children[i] && (!hit || times[i] < ray.maxt)) {
+                children[i]->rayIntersect(mesh, ray, its, hit, triIdx, shadowRay);
+                if (shadowRay && hit) return;
+            }
+        }
+    }
+    else {
+        for (auto tri : triIndices) {
+            float u, v, t;
+            if (mesh.rayIntersect(tri, ray, u, v, t)) {
+                hit = true;
+                if (shadowRay) return;
+                ray.maxt = its.t = t;
+                its.uv = Point2f(u, v);
+                its.mesh = &mesh;
+                triIdx = tri;
+            }
+        }
+    }
 }
 
 bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) const {
@@ -26,23 +137,9 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 
     Ray3f ray(ray_); /// Make a copy of the ray (we will need to update its '.maxt' value)
 
-    /* Brute force search through all triangles */
-    for (uint32_t idx = 0; idx < m_mesh->getTriangleCount(); ++idx) {
-        float u, v, t;
-        if (m_mesh->rayIntersect(idx, ray, u, v, t)) {
-            /* An intersection was found! Can terminate
-               immediately if this is a shadow ray query */
-            if (shadowRay)
-                return true;
-            ray.maxt = its.t = t;
-            its.uv = Point2f(u, v);
-            its.mesh = m_mesh;
-            f = idx;
-            foundIntersection = true;
-        }
-    }
+    m_root->rayIntersect(*m_mesh, ray, its, foundIntersection, f, shadowRay);
 
-    if (foundIntersection) {
+    if (!shadowRay && foundIntersection) {
         /* At this point, we now know that there is an intersection,
            and we know the triangle index of the closest such intersection.
 

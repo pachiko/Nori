@@ -33,6 +33,7 @@ struct Intersection {
     Frame geoFrame;
     /// Pointer to the associated mesh
     const Mesh *mesh;
+
     /// Barycentric coordinates
     Vector3f bary;
     /// Triangle indices

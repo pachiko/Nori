@@ -3,6 +3,7 @@
 /nori
 /warptest
 /ext_build
+/scenes/cubemap/*/*.txt
 CMakeCache.txt
 CMakeSettings.json
 CMakeFiles
@@ -23,5 +24,7 @@ rules.ninja
 *.sln
 *.dir
 *.opendb
+/src/*.pdb
+/scenes/pa2/ajax.obj
 Debug
 x64

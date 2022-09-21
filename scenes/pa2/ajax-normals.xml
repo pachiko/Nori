@@ -6,7 +6,6 @@
 
     <!-- Render the visible surface normals -->
     <integrator type="normals"/>
-
 	<!-- Load the Ajax bust (a freely available scan from the Jotero forum) -->
 	<mesh type="obj">
 		<string name="filename" value="ajax.obj"/>

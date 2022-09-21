@@ -5,10 +5,29 @@
 */
 
 #pragma once
-
+#include <memory>
 #include <nori/mesh.h>
 
+#define NORI_NODE_MAX_TRI_COUNT 10 /* Maximum number of triangles in a node */
+#define NORI_NODE_MAX_TREE_DEPTH 10 /* Maximum depth of the oct tree*/
+
 NORI_NAMESPACE_BEGIN
+
+/**
+ * \brief Node data structure
+ *
+ * Contains 8 children nodes in a pointer OR the indices of triangles.
+ * Cannot contain children nodes AND triangles.
+ * Also contains the bounding box of the node
+ */
+struct OctTreeNode {
+    std::vector<std::unique_ptr<OctTreeNode>> children;
+    std::vector<uint32_t> triIndices;
+    BoundingBox3f bound;
+
+    OctTreeNode(const BoundingBox3f& b) : bound(b) { }
+    void rayIntersect(const Mesh& mesh, Ray3f& ray, Intersection& its, bool& hit, uint32_t& triIdx, bool shadowRay);
+};
 
 /**
  * \brief Acceleration data structure for ray intersection queries
@@ -26,9 +45,9 @@ public:
      */
     void addMesh(Mesh *mesh);
 
-    /// Build the acceleration data structure (currently a no-op)
+    /// Build the acceleration data structure
     void build();
-
+    
     /// Return an axis-aligned box that bounds the scene
     const BoundingBox3f &getBoundingBox() const { return m_bbox; }
 
@@ -55,7 +74,15 @@ public:
 
 private:
     Mesh         *m_mesh = nullptr; ///< Mesh (only a single one for now)
+    std::unique_ptr<OctTreeNode> m_root; // root node of the oct tree
     BoundingBox3f m_bbox;           ///< Bounding box of the entire scene
+    
+    uint8_t depth;
+    uint32_t numInterior;
+    uint32_t numLeaf;
+    double numTris;
+
+    std::unique_ptr<OctTreeNode> recursiveBuild(const BoundingBox3f& bbox, std::vector<uint32_t>& tris);
 };
 
 NORI_NAMESPACE_END

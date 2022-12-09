@@ -10,6 +10,7 @@
 #include <array>
 #include <chrono>
 
+
 NORI_NAMESPACE_BEGIN
 
 void Accel::addMesh(Mesh *mesh) {
@@ -21,30 +22,30 @@ void Accel::addMesh(Mesh *mesh) {
 
 void Accel::build() {
     if (m_mesh == nullptr) return;
+
     uint32_t count = m_mesh->getTriangleCount();
+    numInterior = numLeaf = numTris = 0;
+
     std::vector<uint32_t> tris(count);
     std::iota(tris.begin(), tris.end(), 0);
-    depth = numInterior = numLeaf = numTris = 0;
 
     auto start = std::chrono::high_resolution_clock::now();
-    m_root = recursiveBuild(m_bbox, tris);
+    m_root = recursiveBuild(m_bbox, tris, 0);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "OctTree build time: " << duration.count() << " (ms) \n";
     std::cout << "OctTree number of interior nodes: " << numInterior << "\n";
     std::cout << "OctTree number of leaf nodes: " << numLeaf << "\n";
-    std::cout << "OctTree average number of triangles per leaf node: " << numTris/numLeaf << "\n";
+    std::cout << "OctTree average number of triangles per leaf node: " << static_cast<double>(numTris)/numLeaf << "\n";
 }
 
-std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, std::vector<uint32_t>& tris) {
+std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, std::vector<uint32_t>& tris, uint8_t depth) {
     if (tris.empty()) return nullptr;
-    depth++;
     auto res = std::make_unique<OctTreeNode>(bbox);
 
     if (tris.size() <= NORI_NODE_MAX_TRI_COUNT || depth >= NORI_NODE_MAX_TREE_DEPTH) {
         res->triIndices = std::move(tris);
-        depth--;
         numLeaf++;
         numTris += res->triIndices.size();
         return res;
@@ -77,12 +78,23 @@ std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, st
     } 
 
     res->children.resize(8);
-    for (int i = 0; i < 8; ++i) res->children[i] = recursiveBuild(childBoxes[i], tri_list[i]);
-    depth--;
+
+    if (parallelBuildMode) {
+        tbb::task_group tg;
+        for (int i = 0; i < 8; ++i) {
+            tg.run([&, i]() {
+                res->children[i] = recursiveBuild(childBoxes[i], tri_list[i], depth + 1);
+            });
+        }
+        tg.wait();
+    }
+    else {
+        for (int i = 0; i < 8; ++i) res->children[i] = recursiveBuild(childBoxes[i], tri_list[i], depth + 1);
+    }
+
     numInterior++;
     return res;
 }
-
 
 void OctTreeNode::rayIntersect(const Mesh& mesh, Ray3f& ray, Intersection& its, bool& hit, uint32_t& triIdx, bool shadowRay) {
     bool hitBound;

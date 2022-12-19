@@ -66,6 +66,7 @@ add_executable(nori
   include/nori/warp.h
 
   # Source code files
+  src/ao.cpp
   src/bitmap.cpp
   src/block.cpp
   src/accel.cpp
@@ -84,6 +85,7 @@ add_executable(nori
   src/proplist.cpp
   src/rfilter.cpp
   src/scene.cpp
+  src/simple.cpp
   src/ttest.cpp
   src/warp.cpp
   src/microfacet.cpp

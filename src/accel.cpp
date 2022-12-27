@@ -14,20 +14,27 @@
 NORI_NAMESPACE_BEGIN
 
 void Accel::addMesh(Mesh *mesh) {
-    if (m_mesh)
-        throw NoriException("Accel: only a single mesh is supported!");
-    m_mesh = mesh;
-    m_bbox = m_mesh->getBoundingBox();
+    m_meshes.push_back(mesh);
+    m_bbox.expandBy(mesh->getBoundingBox());
 }
 
 void Accel::build() {
-    if (m_mesh == nullptr) return;
+    if (m_meshes.empty()) return;
 
-    uint32_t count = m_mesh->getTriangleCount();
+    uint32_t count = 0;
+    for (auto mesh : m_meshes) count += mesh->getTriangleCount();
+
     numInterior = numLeaf = numTris = 0;
 
-    std::vector<uint32_t> tris(count);
-    std::iota(tris.begin(), tris.end(), 0);
+    std::vector<triMeshPair> tris;
+    tris.reserve(count);
+    for (uint32_t m = 0; m < m_meshes.size(); m++) {
+        Mesh* mesh = m_meshes[m];
+        uint32_t c = mesh->getTriangleCount();
+        for (uint32_t i = 0; i < c; i++) {
+            tris.push_back(triMeshPair(m, i));
+        }
+    }
 
     auto start = std::chrono::high_resolution_clock::now();
     m_root = recursiveBuild(m_bbox, tris, 0);
@@ -40,7 +47,7 @@ void Accel::build() {
     std::cout << "OctTree average number of triangles per leaf node: " << static_cast<double>(numTris)/numLeaf << "\n";
 }
 
-std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, std::vector<uint32_t>& tris, uint8_t depth) {
+std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, std::vector<triMeshPair>& tris, uint8_t depth) {
     if (tris.empty()) return nullptr;
     auto res = std::make_unique<OctTreeNode>(bbox);
 
@@ -51,7 +58,7 @@ std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, st
         return res;
     }
 
-    std::vector<uint32_t> tri_list[8];
+    std::vector<triMeshPair> tri_list[8];
     std::vector<BoundingBox3f> childBoxes;
     Point3f center = bbox.getCenter();
 
@@ -70,12 +77,13 @@ std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, st
     }
 
     for (auto tri : tris) {
-        const BoundingBox3f& triB = m_mesh->getBoundingBox(tri);
+        const BoundingBox3f& triB = m_meshes[std::get<0>(tri)]->getBoundingBox(std::get<1>(tri));
         for (int i = 0; i < 8; ++i) {
             const BoundingBox3f& childB = childBoxes[i];
             if (triB.overlaps(childB)) tri_list[i].push_back(tri);
         }
     } 
+    tris.clear();
 
     res->children.resize(8);
 
@@ -96,7 +104,8 @@ std::unique_ptr<OctTreeNode> Accel::recursiveBuild(const BoundingBox3f& bbox, st
     return res;
 }
 
-void OctTreeNode::rayIntersect(const Mesh& mesh, Ray3f& ray, Intersection& its, bool& hit, uint32_t& triIdx, bool shadowRay) {
+void OctTreeNode::rayIntersect(const std::vector<Mesh*>& meshes, Ray3f& ray, Intersection& its, bool& hit,
+    uint32_t& triIdx, bool shadowRay) {
     bool hitBound;
     float nearT;
     float farT;
@@ -123,7 +132,7 @@ void OctTreeNode::rayIntersect(const Mesh& mesh, Ray3f& ray, Intersection& its, 
 
         for (auto i : idx) {
             if (children[i] && (!hit || times[i] < ray.maxt)) {
-                children[i]->rayIntersect(mesh, ray, its, hit, triIdx, shadowRay);
+                children[i]->rayIntersect(meshes, ray, its, hit, triIdx, shadowRay);
                 if (shadowRay && hit) return;
             }
         }
@@ -131,13 +140,14 @@ void OctTreeNode::rayIntersect(const Mesh& mesh, Ray3f& ray, Intersection& its, 
     else {
         for (auto tri : triIndices) {
             float u, v, t;
-            if (mesh.rayIntersect(tri, ray, u, v, t)) {
+            Mesh* mesh = meshes[std::get<0>(tri)];
+            if (mesh->rayIntersect(std::get<1>(tri), ray, u, v, t)) {
                 hit = true;
                 if (shadowRay) return;
                 ray.maxt = its.t = t;
                 its.uv = Point2f(u, v);
-                its.mesh = &mesh;
-                triIdx = tri;
+                its.mesh = mesh;
+                triIdx = std::get<1>(tri);
             }
         }
     }
@@ -149,7 +159,7 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 
     Ray3f ray(ray_); /// Make a copy of the ray (we will need to update its '.maxt' value)
 
-    m_root->rayIntersect(*m_mesh, ray, its, foundIntersection, f, shadowRay);
+    m_root->rayIntersect(m_meshes, ray, its, foundIntersection, f, shadowRay);
 
     if (!shadowRay && foundIntersection) {
         /* At this point, we now know that there is an intersection,

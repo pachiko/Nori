@@ -30,6 +30,8 @@ public:
         Ray3f shadow(its.p, wi);
         if (scene->rayIntersect(shadow)) return Color3f(0.f);
 
+        // NOT cos_theta/PI, since we need to divide by PDF of cosineHemisphere
+        // which equals 1 in the end
         return Color3f(1.f);
     }
 

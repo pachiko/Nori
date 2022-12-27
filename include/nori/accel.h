@@ -15,6 +15,8 @@
 
 NORI_NAMESPACE_BEGIN
 
+using triMeshPair = std::tuple<uint32_t, uint32_t>; // mesh index -> tri index
+
 /**
  * \brief Node data structure
  *
@@ -24,11 +26,12 @@ NORI_NAMESPACE_BEGIN
  */
 struct OctTreeNode {
     std::vector<std::unique_ptr<OctTreeNode>> children;
-    std::vector<uint32_t> triIndices;
+    std::vector<triMeshPair> triIndices;
     BoundingBox3f bound;
 
     OctTreeNode(const BoundingBox3f& b) : bound(b) { }
-    void rayIntersect(const Mesh& mesh, Ray3f& ray, Intersection& its, bool& hit, uint32_t& triIdx, bool shadowRay);
+    void rayIntersect(const std::vector<Mesh*>& meshes, Ray3f& ray, Intersection& its, bool& hit,
+        uint32_t& triIdx, bool shadowRay);
 };
 
 /**
@@ -75,7 +78,7 @@ public:
     bool rayIntersect(const Ray3f &ray, Intersection &its, bool shadowRay) const;
 
 private:
-    Mesh         *m_mesh = nullptr; ///< Mesh (only a single one for now)
+    std::vector<Mesh*> m_meshes; // a vector of meshes
     std::unique_ptr<OctTreeNode> m_root; // root node of the oct tree
     BoundingBox3f m_bbox;           ///< Bounding box of the entire scene
     
@@ -84,7 +87,7 @@ private:
     std::atomic<uint32_t> numTris;
     bool parallelBuildMode = true;
 
-    std::unique_ptr<OctTreeNode> recursiveBuild(const BoundingBox3f& bbox, std::vector<uint32_t>& tris, uint8_t depth);
+    std::unique_ptr<OctTreeNode> recursiveBuild(const BoundingBox3f& bbox, std::vector<triMeshPair>& tris, uint8_t depth);
 };
 
 NORI_NAMESPACE_END

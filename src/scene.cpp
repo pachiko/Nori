@@ -39,6 +39,10 @@ void Scene::activate() {
     }
 
     cout << endl;
+
+    for (auto mesh : m_meshes) if (mesh->isEmitter()) m_emitters.push_back(mesh);
+    cout << "Number of emitters: " << m_emitters.size() << endl;
+
     cout << "Configuration: " << toString() << endl;
     cout << endl;
 }

@@ -21,7 +21,6 @@ public:
         
         Point2f sample = sampler->next2D();
         Vector3f wi = Warp::squareToCosineHemisphere(sample);
-        float cos_theta = Frame::cosTheta(wi);
         Frame f(its.shFrame.n);
         wi = f.toWorld(wi);
 

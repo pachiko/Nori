@@ -43,6 +43,14 @@ public:
     void generate() { /* No-op for this sampler */ }
     void advance()  { /* No-op for this sampler */ }
 
+    uint32_t nextUInt() {
+        return m_random.nextUInt();
+    }
+
+    uint32_t nextUInt(uint32_t bound) {
+        return m_random.nextUInt(bound);
+    }
+
     float next1D() {
         return m_random.nextFloat();
     }

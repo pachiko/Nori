@@ -76,6 +76,12 @@ public:
     /// Advance to the next sample
     virtual void advance() = 0;
 
+    // Random uint32_t
+    virtual uint32_t nextUInt() = 0;
+
+    // Random uint32_t within a bound
+    virtual uint32_t nextUInt(uint32_t bound) = 0;
+
     /// Retrieve the next component value from the current sample
     virtual float next1D() = 0;
 

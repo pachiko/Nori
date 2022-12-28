@@ -19,9 +19,7 @@ public:
         Intersection its;
         if (!scene->rayIntersect(ray, its)) return Color3f(0.0f);
         
-        float x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-        float y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-        Point2f sample(x, y);
+        Point2f sample = sampler->next2D();
         Vector3f wi = Warp::squareToCosineHemisphere(sample);
         float cos_theta = Frame::cosTheta(wi);
         Frame f(its.shFrame.n);

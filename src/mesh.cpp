@@ -23,9 +23,16 @@ Mesh::~Mesh() {
 void Mesh::activate() {
     if (!m_bsdf) {
         /* If no material was assigned, instantiate a diffuse BRDF */
-        m_bsdf = static_cast<BSDF *>(
-            NoriObjectFactory::createInstance("diffuse", PropertyList()));
+        m_bsdf = static_cast<BSDF *>(NoriObjectFactory::createInstance("diffuse", PropertyList()));
     }
+
+    // Create triangle sampler
+    uint32_t triCount = getTriangleCount();
+    m_triangleSampler = DiscretePDF(triCount);
+    for (uint32_t i = 0; i < triCount; i++) {
+        m_triangleSampler.append(surfaceArea(i));
+    }
+    m_triangleSampler.normalize();
 }
 
 float Mesh::surfaceArea(uint32_t index) const {
@@ -111,6 +118,32 @@ void Mesh::addChild(NoriObject *obj) {
             throw NoriException("Mesh::addChild(<%s>) is not supported!",
                                 classTypeName(obj->getClassType()));
     }
+}
+
+void Mesh::sampleSurface(const Point2f& sample, MeshSurfaceQueryRecord& rec) const {
+    size_t idx = m_triangleSampler.sample(sample.x());
+
+    float sqrt_1_m_zeta1 = sqrtf(1.f - sample.x());
+    float alpha = 1.f - sqrt_1_m_zeta1;
+    float beta = sample.y() * sqrt_1_m_zeta1;
+
+    uint32_t i0 = m_F(0, idx), i1 = m_F(1, idx), i2 = m_F(2, idx);
+    const Point3f p0 = m_V.col(i0), p1 = m_V.col(i1), p2 = m_V.col(i2);
+    rec.p = alpha * p0 + beta * p1 + (1.f - alpha - beta) * p2;
+
+    if (m_N.data() != nullptr) {
+        const Point3f n0 = m_N.col(i0), n1 = m_N.col(i1), n2 = m_N.col(i2);
+        rec.n = alpha * n0 + beta * n1 + (1.f - alpha - beta) * n2;
+    }
+    else {
+        Vector3f edge1 = p1 - p0, edge2 = p2 - p0;
+        rec.n = edge1.cross(edge2).normalized();
+    }
+    
+    // p(tri) = tri_area/mesh_area
+    // p(point|tri) = 1.f/tri_area
+    // pdf = p(point|tri) * p(tri) = 1.f/mesh_area
+    rec.pdf = m_triangleSampler.getNormalization();
 }
 
 std::string Mesh::toString() const {

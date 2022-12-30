@@ -121,9 +121,10 @@ void Mesh::addChild(NoriObject *obj) {
 }
 
 void Mesh::sampleSurface(const Point2f& sample, MeshSurfaceQueryRecord& rec) const {
-    size_t idx = m_triangleSampler.sample(sample.x());
+    float zeta1 = sample.x();
+    size_t idx = m_triangleSampler.sampleReuse(zeta1);
 
-    float sqrt_1_m_zeta1 = sqrtf(1.f - sample.x());
+    float sqrt_1_m_zeta1 = sqrtf(1.f - zeta1);
     float alpha = 1.f - sqrt_1_m_zeta1;
     float beta = sample.y() * sqrt_1_m_zeta1;
 

@@ -39,17 +39,21 @@ public:
         rec.origN = first.shFrame.n;
         rec.light = light;
         Color3f Lr = light->getEmitter()->sample(sampler->next2D(), rec);
+        if (Lr.getLuminance() <= 0.f) return Le;
         Lr /= (1.f / lights.size()); // Prob of choosing light
 
         // Visibility
         Vector3f v = rec.hit - rec.origin;
         float d = v.norm();
-        Ray3f shadow(rec.origin, v / d, Epsilon, d - Epsilon);
+        v /= d;
+        Ray3f shadow(rec.origin, v, Epsilon, d - Epsilon);
         if (scene->rayIntersect(shadow)) return Le;
 
         // BSDF
-        BSDFQueryRecord bRec(first.shFrame.toLocal(-ray.d), first.shFrame.toLocal(v / d), ESolidAngle);
-        Lr *= first.mesh->getBSDF()->eval(bRec);
+        BSDFQueryRecord bRec(first.shFrame.toLocal(-ray.d), first.shFrame.toLocal(v), ESolidAngle);
+        const BSDF* f = first.mesh->getBSDF();
+        Color3f F = f->eval(bRec);
+        Lr *= F;
 
         return Le + Lr;
     }

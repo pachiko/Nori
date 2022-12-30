@@ -81,6 +81,9 @@ public:
     /// Return the total number of vertices in this shape
     uint32_t getVertexCount() const { return (uint32_t) m_V.cols(); }
 
+    /// Return the surface area of the entire mesh
+    float surfaceArea() const { return m_triangleSampler.getSum(); }
+
     /// Return the surface area of the given triangle
     float surfaceArea(uint32_t index) const;
 

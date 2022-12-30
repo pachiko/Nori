@@ -3,7 +3,7 @@
 NORI_NAMESPACE_BEGIN
 
 
-// Area Light
+// Diffuse Area Light
 class AreaLight : public Emitter {
 public:
     AreaLight(const PropertyList& props) {
@@ -21,32 +21,30 @@ public:
         rec.hitN = surfaceRec.n;
 
         Color3f res = eval(rec);
-        float prob = pdf(rec) * surfaceRec.pdf;
-
-        if (prob <= 0.f) return Color3f(0.f);
-        return res / prob;
+        res *= geometry(rec);
+        return res / pdf(rec);
     }
 
-    // Radiance
+    // Radiance, see DiffuseAreaLight::L()
     Color3f eval(EmitterQueryRecord& rec) const {
-        Vector3f wi = (rec.origin - rec.hit).normalized();
-        Vector3f n = rec.hitN;
-        float cos_theta = wi.dot(n);
-        return (cos_theta <= 0.f) ? Color3f(0.f) : m_radiance;
+        Vector3f v = rec.origin - rec.hit;
+        Vector3f w = v.normalized();
+        float cos_theta_y = w.dot(rec.hitN);
+        return (cos_theta_y > 0.f) ? m_radiance : Color3f(0.f);
     }
 
     // PDF
     float pdf(EmitterQueryRecord& rec) const {
-        Vector3f v = rec.hit - rec.origin;
-        float r2 = v.squaredNorm();
-        v.normalize();
+        return 1.f/rec.light->surfaceArea();
+    }
 
-        float cos_theta_x = v.dot(rec.origN);
-        float cos_theta_y = -v.dot(rec.hitN);
-
-        if (cos_theta_x <= 0.f || cos_theta_y <= 0.f) return 0.f;
-
-        return r2 / (cos_theta_x * cos_theta_y);
+    // Geometry term w/o visibility
+    float geometry(EmitterQueryRecord& rec) const {
+        Vector3f v = rec.origin - rec.hit;
+        Vector3f w = v.normalized();
+        float cos_theta_y = w.dot(rec.hitN);
+        float cos_theta_x = -w.dot(rec.origN);
+        return std::abs(cos_theta_x) * std::abs(cos_theta_y) / v.squaredNorm();
     }
 
     /// Return a brief string summary of the instance (for debugging purposes)

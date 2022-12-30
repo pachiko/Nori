@@ -27,8 +27,8 @@ public:
         Ray3f shadow(its.p, wi);
         if (scene->rayIntersect(shadow)) return Color3f(0.f);
 
-        // NOT cos_theta/PI, since we need to divide by PDF of cosineHemisphere
-        // which equals 1 in the end
+        // NOT rho/PI*cos_theta, since we need to divide by PDF of cosineHemisphere (cos_theta/PI)
+        // which equals rho in the end (NB: albedo for AO is 1)
         return Color3f(1.f);
     }
 

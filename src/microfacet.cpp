@@ -61,7 +61,7 @@ public:
     float geometry(const BSDFQueryRecord& bRec) const {
         Vector3f wh = (bRec.wi + bRec.wo).normalized();
         
-        auto lambda = [&](const Vector3f& wv) {
+        static auto lambda = [&](const Vector3f& wv) {
             float chi = wv.dot(wh) / Frame::cosTheta(wv);
             if (chi <= 0.f) return 0.f;
 
@@ -97,9 +97,11 @@ public:
         if (specular) { // Specular
             Vector3f wh = Warp::squareToBeckmann(sample, m_alpha); // Normal = halfway
             bRec.wo = 2.f*(wh.dot(bRec.wi))*wh - bRec.wi; // Reflect vector
+            bRec.eta = 1.f;
         }
         else { // Diffuse
             bRec.wo = Warp::squareToCosineHemisphere(sample);
+            bRec.eta = 1.f;
         }
 
         Color3f res = eval(bRec);

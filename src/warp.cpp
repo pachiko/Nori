@@ -45,7 +45,7 @@ Point2f Warp::squareToTent(const Point2f &sample) {
     */
 
     // Given zeta and using CDF, solve for t. Requires solving a quadratic equation.
-    auto tentInv = [](float z) {
+    static auto tentInv = [](float z) {
         if (z >= 0.f && z <= 0.5f) {
             return -1.f + sqrtf(2.f * z);
         }
@@ -64,7 +64,7 @@ Point2f Warp::squareToTent(const Point2f &sample) {
 }
 
 float Warp::squareToTentPdf(const Point2f &p) {
-    auto tentPDF = [](float t) {
+    static auto tentPDF = [](float t) {
         if (t >= -1.f && t <= 0.f) {
             return 1.f + t;
         }

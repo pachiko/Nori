@@ -39,7 +39,7 @@ public:
     /// Evaluate the BRDF for the given pair of directions
     Color3f eval(const BSDFQueryRecord &bRec) const {
         Color3f res = m_kd * INV_PI;
-        Vector3f wh = (bRec.wi + bRec.wo).normalized();
+        const Vector3f wh = (bRec.wi + bRec.wo).normalized();
 
         // Glancing angles
         if (Frame::cosTheta(bRec.wi) <= 0 || Frame::cosTheta(bRec.wo) <= 0) return Color3f(0.f);
@@ -59,9 +59,9 @@ public:
     // 0.5 * [erf(a) - 1 + exp(-a^2)/a/sqrt(PI)]
     // where a = 1/(alpha*tan_theta)
     float geometry(const BSDFQueryRecord& bRec) const {
-        Vector3f wh = (bRec.wi + bRec.wo).normalized();
+        const Vector3f wh = (bRec.wi + bRec.wo).normalized();
         
-        static auto lambda = [&](const Vector3f& wv) {
+        auto lambda = [&](const Vector3f& wv) {
             float chi = wv.dot(wh) / Frame::cosTheta(wv);
             if (chi <= 0.f) return 0.f;
 
@@ -79,7 +79,7 @@ public:
 
     /// Evaluate the sampling density of \ref sample() wrt. solid angles
     float pdf(const BSDFQueryRecord &bRec) const {
-        Vector3f wh = (bRec.wi + bRec.wo).normalized();
+        const Vector3f wh = (bRec.wi + bRec.wo).normalized();
 
         // Glancing angles
         if (Frame::cosTheta(bRec.wi) <= 0 || Frame::cosTheta(bRec.wo) <= 0) return 0.f;

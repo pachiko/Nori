@@ -37,7 +37,7 @@ public:
             BSDFQueryRecord rec(its.shFrame.toLocal(-r.d));
             const BSDF* f = its.mesh->getBSDF();
             Color3f F = f->sample(rec, sampler->next2D());
-            eta *= rec.eta;
+            eta *= 1.f/rec.eta;
             throughput *= F;
             r = Ray3f(its.p, its.shFrame.toWorld(rec.wo));
 

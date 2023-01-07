@@ -18,6 +18,22 @@ public:
 
         /* Exterior IOR (default: air) */
         m_extIOR = propList.getFloat("extIOR", 1.000277f);
+
+        // In pbrt v3, the ctor to SpecularTransmission receives 1.f for etaA, eta for etaB
+        // the FresnelDielectric object in SpecularTransmission is constructed using 
+        // etaA for etaI, etaB for etaT
+
+        // etaA is the index of refraction above the surface
+        // etaB is the index of refraction below the surface
+
+        // During SpecularTransmission::Sample_f,  etaI and etaT are local variables defined
+        // using etaA and etaB, depending on the incident direction
+
+        // bool entering = CosTheta(wo) > 0;
+        // Float etaI = entering ? etaA : etaB;
+        // Float etaT = entering ? etaB : etaA;
+
+        // Radiance is multiplied by etaI/etaT ^2
     }
 
     Color3f eval(const BSDFQueryRecord &) const {
@@ -77,7 +93,9 @@ public:
                 cosThetaT
             ).normalized();
 
-            return eta*eta*Color3f(1.f);
+            // What happen to (1 - Fr) and 1/cosTheta?
+            // we divide by pdf and multiply cosTheta in sample(), so those get canceled out
+            return eta * eta * Color3f(1.f);
         }
     }
 

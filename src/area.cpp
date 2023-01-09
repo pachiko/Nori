@@ -21,7 +21,6 @@ public:
         rec.hitN = surfaceRec.n;
 
         Color3f res = eval(rec);
-        res *= geometry(rec);
         return res / pdf(rec);
     }
 
@@ -33,9 +32,9 @@ public:
         return (cos_theta_y > 0.f) ? m_radiance : Color3f(0.f);
     }
 
-    // PDF
+    // PDF wrt solid angles
     float pdf(EmitterQueryRecord& rec) const {
-        return 1.f/rec.light->surfaceArea();
+        return 1.f / rec.light->surfaceArea() / geometry(rec);
     }
 
     // Geometry term w/o visibility
